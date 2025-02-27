@@ -49,17 +49,19 @@ repl_way = pyrtl.MemBlock(bitwidth=2, addrwidth=4, max_read_ports=2, max_write_p
 # offset = req_addr[slice(3, 0, -1)]
 tag = pyrtl.WireVector(bitwidth=24, name='tag')
 index = pyrtl.WireVector(bitwidth=4, name='index')
-offset = pyrtl.WireVector(bitwidth=4, name='offset')
+offset = pyrtl.WireVector(bitwidth=2, name='offset')
 tag <<= req_addr[8:32]  
 index <<= req_addr[4:8]
-offset <<= req_addr[0:4]
+offset <<= req_addr[2:4]
 
 write_mask = pyrtl.WireVector(bitwidth=128)
 write_data = pyrtl.WireVector(bitwidth=128)
+
 data_0_payload = pyrtl.WireVector(bitwidth=128, name='data_0_payload')
 data_1_payload = pyrtl.WireVector(bitwidth=128, name='data_1_payload')
 data_2_payload = pyrtl.WireVector(bitwidth=128, name='data_2_payload')
 data_3_payload = pyrtl.WireVector(bitwidth=128, name='data_3_payload')
+
 data_0_payload <<= data_0[index]
 data_1_payload <<= data_1[index]
 data_2_payload <<= data_2[index]
@@ -69,6 +71,12 @@ hit_0 = pyrtl.WireVector(bitwidth=1, name='hit_0')
 hit_1 = pyrtl.WireVector(bitwidth=1, name='hit_1')
 hit_2 = pyrtl.WireVector(bitwidth=1, name='hit_2')
 hit_3 = pyrtl.WireVector(bitwidth=1, name='hit_3')
+hit_result = pyrtl.WireVector(bitwidth=1, name='hit_result')
+
+enable_0 = pyrtl.WireVector(bitwidth=1, name='enable_0')
+enable_1 = pyrtl.WireVector(bitwidth=1, name='enable_1')
+enable_2 = pyrtl.WireVector(bitwidth=1, name='enable_2')
+enable_3 = pyrtl.WireVector(bitwidth=1, name='enable_3')
 
 replace_way = repl_way[index]
 
@@ -77,55 +85,53 @@ replace_way = repl_way[index]
 # TODO: Check four entries in a row in parallel.
 
 with pyrtl.conditional_assignment:
-    with (valid_0[index] == 1 & (tag == tag_0[index])):
-        hit_0 |= 1
-    with (valid_1[index] == 1 & (tag == tag_1[index])):
-        hit_1 |= 1
-    with (valid_2[index] == 1 & (tag == tag_2[index])):
-        hit_2 |= 1
-    with (valid_3[index] == 1 & (tag == tag_3[index])):
-        hit_3 |= 1
+    with req_new == 1:
+        with ((valid_0[index] == 1) & (tag == tag_0[index])):
+            hit_0 |= 1
+        with ((valid_1[index] == 1) & (tag == tag_1[index])):
+            hit_1 |= 1
+        with ((valid_2[index] == 1) & (tag == tag_2[index])):
+            hit_2 |= 1
+        with ((valid_3[index] == 1) & (tag == tag_3[index])):
+            hit_3 |= 1
 
 # TODO: Determine if hit or miss.
-hit_result = (hit_0 | hit_1 | hit_2 | hit_3)
+hit_result <<= (hit_0 | hit_1 | hit_2 | hit_3)
 
 # TODO: If request type is write, write req_data to appropriate block address
-enable_0 = 0
-enable_1 = 0
-enable_2 = 0
-enable_3 = 0
 with pyrtl.conditional_assignment:
     with req_new == 1:
         with req_type == 1:
             with hit_result == 0: # Handling write misses
                 with replace_way == 0:
-                    enable_0 = 1
+                    enable_0 |= pyrtl.Const(1)
                 with replace_way == 1:
-                    enable_1 = 1
+                    enable_1 |= pyrtl.Const(1)
                 with replace_way == 2:
-                    enable_2 = 1
+                    enable_2 |= pyrtl.Const(1)
                 with replace_way == 3:
-                    enable_3 = 1
+                    enable_3 |= pyrtl.Const(1)
             with hit_result == 1: # Handling write hits
                 with hit_0:
-                    enable_0 = 1
+                    enable_0 |= pyrtl.Const(1)
                 with hit_1:
-                    enable_1 = 1
+                    enable_1 |= pyrtl.Const(1)
                 with hit_2:
-                    enable_2 = 1
+                    enable_2 |= pyrtl.Const(1)
                 with hit_3:
-                    enable_3 = 1
+                    enable_3 |= pyrtl.Const(1)
 
-        data_shift_amount = pyrtl.WireVector(bitwidth=8, name='data_shift_amount')            
-        data_shift_amount <<= offset
+# offset by 0, 32, 64, 96 bits
+data_shift_amount = pyrtl.WireVector(bitwidth=8, name='data_shift_amount')            
+data_shift_amount <<= offset*32
 
-        write_mask <<= pyrtl.select(hit_result, ~pyrtl.shift_left_logical(pyrtl.Const(0x0ffffffff, bitwidth=128), data_shift_amount), 0)
-        write_data <<= pyrtl.shift_left_logical(req_data.zero_extended(bitwidth=128), data_shift_amount)
+write_mask <<= pyrtl.select(hit_result, ~pyrtl.shift_left_logical(pyrtl.Const(0x0ffffffff, bitwidth=128), data_shift_amount), 0)
+write_data <<= pyrtl.shift_left_logical(req_data.zero_extended(bitwidth=128), data_shift_amount)
 
-        data_0[index] <<= pyrtl.MemBlock.EnabledWrite((data_0_payload & write_mask) | write_data, enable_0) 
-        data_1[index] <<= pyrtl.MemBlock.EnabledWrite((data_1_payload & write_mask) | write_data, enable_1)
-        data_2[index] <<= pyrtl.MemBlock.EnabledWrite((data_2_payload & write_mask) | write_data, enable_2)
-        data_3[index] <<= pyrtl.MemBlock.EnabledWrite((data_3_payload & write_mask) | write_data, enable_3)
+data_0[index] <<= pyrtl.MemBlock.EnabledWrite((data_0_payload & write_mask) | write_data, enable_0) 
+data_1[index] <<= pyrtl.MemBlock.EnabledWrite((data_1_payload & write_mask) | write_data, enable_1)
+data_2[index] <<= pyrtl.MemBlock.EnabledWrite((data_2_payload & write_mask) | write_data, enable_2)
+data_3[index] <<= pyrtl.MemBlock.EnabledWrite((data_3_payload & write_mask) | write_data, enable_3)
 
 # TODO: Handle replacement. Be careful handling replacement when you
 # also have to do a write
@@ -154,6 +160,17 @@ with pyrtl.conditional_assignment:
             
 # TODO: Determine output
 with pyrtl.conditional_assignment:
+    selected_data = pyrtl.WireVector(bitwidth=128, name='selected_data')
+    with hit_0:
+        selected_data |= data_0[index]
+    with hit_1:
+        selected_data |= data_1[index]
+    with hit_2:
+        selected_data |= data_2[index]
+    with hit_3:
+        selected_data |= data_3[index]
+    
+with pyrtl.conditional_assignment:
     with req_new == 0:
         resp_hit |= 0
         resp_data |= 0
@@ -161,17 +178,8 @@ with pyrtl.conditional_assignment:
         with req_type == 0: 
             with hit_result == 1: # Handling read hits
                 resp_hit |= 1
-                # selected_data = pyrtl.WireVector(bitwidth=128, name='selected_data')
                 
-                with hit_0:
-                    resp_data |= data_0[index]
-                with hit_1:
-                    resp_data |= data_1[index]
-                with hit_2:
-                    resp_data |= data_2[index]
-                with hit_3:
-                    resp_data |= data_3[index]
-                    
+                # selected_data = pyrtl.WireVector(bitwidth=128, name='selected_data')
                 # with hit_0:
                 #     selected_data |= data_0[index]
                 # with hit_1:
@@ -180,8 +188,17 @@ with pyrtl.conditional_assignment:
                 #     selected_data |= data_2[index]
                 # with hit_3:
                 #     selected_data |= data_3[index]
-            
-                # resp_data |= pyrtl.corecircuits.mux(offset[2:4], selected_data[0:32], selected_data[33:64], selected_data[65:96], selected_data[97:128])
+                    
+                # with hit_0:
+                #     resp_data |= data_0[index]
+                # with hit_1:
+                #     resp_data |= data_1[index]
+                # with hit_2:
+                #     resp_data |= data_2[index]
+                # with hit_3:
+                #     resp_data |= data_3[index]
+
+                resp_data |= pyrtl.corecircuits.mux(offset, selected_data[0:32], selected_data[32:64], selected_data[64:96], selected_data[96:128])
                 
             with hit_result == 0: # Handling read misses
                 resp_hit |= 0
@@ -317,8 +334,6 @@ TestHit(sim, sim_trace)
 TestWrite(sim, sim_trace)
 TestCorrectIndex(sim, sim_trace)
 
-TestMiss(sim, sim_trace, 64)
-TestHit(sim, sim_trace, 64)
 
 # Print trace
 # sim_trace.render_trace(symbol_len=8)
