@@ -52,7 +52,7 @@ index = pyrtl.WireVector(bitwidth=4, name='index')
 offset = pyrtl.WireVector(bitwidth=2, name='offset')
 tag <<= req_addr[8:32]  
 index <<= req_addr[4:8]
-offset <<= req_addr[2:4]
+offset <<= req_addr[0:4]
 
 write_mask = pyrtl.WireVector(bitwidth=128)
 write_data = pyrtl.WireVector(bitwidth=128)
