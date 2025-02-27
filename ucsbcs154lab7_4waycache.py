@@ -116,40 +116,41 @@ with pyrtl.conditional_assignment:
                 with hit_3:
                     enable_3 = 1
 
-data_shift_amount = pyrtl.WireVector(bitwidth=7, name='data_shift_amount')            
-data_shift_amount <<= offset*32
+        data_shift_amount = pyrtl.WireVector(bitwidth=7, name='data_shift_amount')            
+        data_shift_amount <<= offset*32
 
-write_mask <<= pyrtl.select(hit_result, ~pyrtl.shift_left_logical(pyrtl.Const(0x0ffffffff, bitwidth=128), data_shift_amount), 0)
-write_data <<= pyrtl.shift_left_logical(req_data.zero_extended(bitwidth=128), data_shift_amount)
+        write_mask <<= pyrtl.select(hit_result, ~pyrtl.shift_left_logical(pyrtl.Const(0x0ffffffff, bitwidth=128), data_shift_amount), 0)
+        write_data <<= pyrtl.shift_left_logical(req_data.zero_extended(bitwidth=128), data_shift_amount)
 
-data_0[index] <<= pyrtl.MemBlock.EnabledWrite((data_0_payload & write_mask) | write_data, enable_0) 
-data_1[index] <<= pyrtl.MemBlock.EnabledWrite((data_1_payload & write_mask) | write_data, enable_1)
-data_2[index] <<= pyrtl.MemBlock.EnabledWrite((data_2_payload & write_mask) | write_data, enable_2)
-data_3[index] <<= pyrtl.MemBlock.EnabledWrite((data_3_payload & write_mask) | write_data, enable_3)
+        data_0[index] <<= pyrtl.MemBlock.EnabledWrite((data_0_payload & write_mask) | write_data, enable_0) 
+        data_1[index] <<= pyrtl.MemBlock.EnabledWrite((data_1_payload & write_mask) | write_data, enable_1)
+        data_2[index] <<= pyrtl.MemBlock.EnabledWrite((data_2_payload & write_mask) | write_data, enable_2)
+        data_3[index] <<= pyrtl.MemBlock.EnabledWrite((data_3_payload & write_mask) | write_data, enable_3)
 
 # TODO: Handle replacement. Be careful handling replacement when you
 # also have to do a write
 with pyrtl.conditional_assignment:
-    with hit_result == 0:
-        # repl_way[index] |= pyrtl.select(replace_way == 3, 0, repl_way[index] + 1)
-        # repl_way[index] |= repl_way[index] + 1
-        
-        with replace_way == 0:
-            tag_0[index] |= tag
-            valid_0[index] |= pyrtl.Const(1)
-            repl_way[index] |= 1
-        with replace_way == 1:
-            tag_1[index] |= tag
-            valid_1[index] |= pyrtl.Const(1)
-            repl_way[index] |= 2
-        with replace_way == 2:
-            tag_2[index] |= tag
-            valid_2[index] |= pyrtl.Const(1)
-            repl_way[index] |= 3
-        with replace_way == 3:
-            tag_3[index] |= tag
-            valid_3[index] |= pyrtl.Const(1)
-            repl_way[index] |= 0
+    with req_new == 1:
+        with hit_result == 0:
+            # repl_way[index] |= pyrtl.select(replace_way == 3, 0, repl_way[index] + 1)
+            # repl_way[index] |= repl_way[index] + 1
+            
+            with replace_way == 0:
+                tag_0[index] |= tag
+                valid_0[index] |= pyrtl.Const(1)
+                repl_way[index] |= 1
+            with replace_way == 1:
+                tag_1[index] |= tag
+                valid_1[index] |= pyrtl.Const(1)
+                repl_way[index] |= 2
+            with replace_way == 2:
+                tag_2[index] |= tag
+                valid_2[index] |= pyrtl.Const(1)
+                repl_way[index] |= 3
+            with replace_way == 3:
+                tag_3[index] |= tag
+                valid_3[index] |= pyrtl.Const(1)
+                repl_way[index] |= 0
             
 # TODO: Determine output
 with pyrtl.conditional_assignment:
