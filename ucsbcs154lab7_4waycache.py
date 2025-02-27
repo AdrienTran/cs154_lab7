@@ -161,18 +161,27 @@ with pyrtl.conditional_assignment:
         with req_type == 0: 
             with hit_result == 1: # Handling read hits
                 resp_hit |= 1
-                selected_data = pyrtl.WireVector(bitwidth=128, name='selected_data')
+                # selected_data = pyrtl.WireVector(bitwidth=128, name='selected_data')
                 
                 with hit_0:
-                    selected_data |= data_0[index]
+                    resp_data |= data_0[index]
                 with hit_1:
-                    selected_data |= data_1[index]
+                    resp_data |= data_1[index]
                 with hit_2:
-                    selected_data |= data_2[index]
+                    resp_data |= data_2[index]
                 with hit_3:
-                    selected_data |= data_3[index]
+                    resp_data |= data_3[index]
+                    
+                # with hit_0:
+                #     selected_data |= data_0[index]
+                # with hit_1:
+                #     selected_data |= data_1[index]
+                # with hit_2:
+                #     selected_data |= data_2[index]
+                # with hit_3:
+                #     selected_data |= data_3[index]
             
-                resp_data |= pyrtl.corecircuits.mux(offset[2:4], selected_data[0:32], selected_data[33:64], selected_data[65:96], selected_data[97:128])
+                # resp_data |= pyrtl.corecircuits.mux(offset[2:4], selected_data[0:32], selected_data[33:64], selected_data[65:96], selected_data[97:128])
                 
             with hit_result == 0: # Handling read misses
                 resp_hit |= 0
