@@ -120,6 +120,16 @@ with pyrtl.conditional_assignment:
                     enable_2 |= pyrtl.Const(1)
                 with hit_3:
                     enable_3 |= pyrtl.Const(1)
+        with req_type == 0:
+            with hit_result == 0: # Handling read misses
+                with replace_way == 0:
+                    enable_0 |= pyrtl.Const(1)
+                with replace_way == 1:
+                    enable_1 |= pyrtl.Const(1)
+                with replace_way == 2:
+                    enable_2 |= pyrtl.Const(1)
+                with replace_way == 3:
+                    enable_3 |= pyrtl.Const(1)
 
 # offset by 0, 32, 64, 96 bits
 data_shift_amount = pyrtl.WireVector(bitwidth=8, name='data_shift_amount')            
@@ -144,19 +154,19 @@ with pyrtl.conditional_assignment:
             with replace_way == 0:
                 tag_0[index] |= tag
                 valid_0[index] |= pyrtl.Const(1)
-                repl_way[index] |= 1
+                repl_way[index] |= pyrtl.Const(1)
             with replace_way == 1:
                 tag_1[index] |= tag
                 valid_1[index] |= pyrtl.Const(1)
-                repl_way[index] |= 2
+                repl_way[index] |= pyrtl.Const(2)
             with replace_way == 2:
                 tag_2[index] |= tag
                 valid_2[index] |= pyrtl.Const(1)
-                repl_way[index] |= 3
+                repl_way[index] |= pyrtl.Const(3)
             with replace_way == 3:
                 tag_3[index] |= tag
                 valid_3[index] |= pyrtl.Const(1)
-                repl_way[index] |= 0
+                repl_way[index] |= pyrtl.Const(0)
             
 # TODO: Determine output
 with pyrtl.conditional_assignment:
