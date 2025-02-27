@@ -49,7 +49,7 @@ repl_way = pyrtl.MemBlock(bitwidth=2, addrwidth=4, max_read_ports=2, max_write_p
 # offset = req_addr[slice(3, 0, -1)]
 tag = pyrtl.WireVector(bitwidth=24, name='tag')
 index = pyrtl.WireVector(bitwidth=4, name='index')
-offset = pyrtl.WireVector(bitwidth=2, name='offset')
+offset = pyrtl.WireVector(bitwidth=4, name='offset')
 tag <<= req_addr[8:32]  
 index <<= req_addr[4:8]
 offset <<= req_addr[0:4]
@@ -171,7 +171,7 @@ with pyrtl.conditional_assignment:
                 with hit_3:
                     selected_data |= data_3[index]
             
-                resp_data |= pyrtl.corecircuits.mux(offset, selected_data[0:32], selected_data[33:64], selected_data[65:96], selected_data[97:128])
+                resp_data |= pyrtl.corecircuits.mux(offset[2:4], selected_data[0:32], selected_data[33:64], selected_data[65:96], selected_data[97:128])
                 
             with hit_result == 0: # Handling read misses
                 resp_hit |= 0
