@@ -43,13 +43,16 @@ data_3 = pyrtl.MemBlock(bitwidth=128, addrwidth=4, max_read_ports=2, max_write_p
 repl_way = pyrtl.MemBlock(bitwidth=2, addrwidth=4, max_read_ports=2, max_write_ports=1, asynchronous=True, name='repl_way')
 
 # TODO: Declare your own WireVectors, MemBlocks, etc.
-tag, index, offset, temp = pyrtl.chop(req_addr, 24, 4, 2, 2)
+# tag, index, offset, temp = pyrtl.chop(req_addr, 24, 4, 2, 2)
 # tag = req_addr[slice(31, 8, -1)]
 # index = req_addr[slice(7, 4, -1)]
 # offset = req_addr[slice(3, 0, -1)]
-# tag = req_addr[31:8]
-# index = req_addr[7:4]
-# offset = req_addr[3:0]
+tag = pyrtl.WireVector(bitwidth=24, name='tag')
+index = pyrtl.WireVector(bitwidth=4, name='index')
+offset = pyrtl.WireVector(bitwidth=2, name='offset')
+tag <<= req_addr[8:32]  
+index <<= req_addr[4:8]
+offset <<= req_addr[2:4]
 
 write_mask = pyrtl.WireVector(bitwidth=128)
 write_data = pyrtl.WireVector(bitwidth=128)
