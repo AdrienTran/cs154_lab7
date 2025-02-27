@@ -43,9 +43,13 @@ data_3 = pyrtl.MemBlock(bitwidth=128, addrwidth=4, max_read_ports=2, max_write_p
 repl_way = pyrtl.MemBlock(bitwidth=2, addrwidth=4, max_read_ports=2, max_write_ports=1, asynchronous=True, name='repl_way')
 
 # TODO: Declare your own WireVectors, MemBlocks, etc.
-tag = req_addr[slice(31, 8, -1)]
-index = req_addr[slice(7, 4, -1)]
-offset = req_addr[slice(3, 0, -1)]
+tag, index, offset = pyrtl.chop(req_addr, 24, 4, 4)
+# tag = req_addr[slice(31, 8, -1)]
+# index = req_addr[slice(7, 4, -1)]
+# offset = req_addr[slice(3, 0, -1)]
+# tag = req_addr[31:8]
+# index = req_addr[7:4]
+# offset = req_addr[3:0]
 
 write_mask = pyrtl.WireVector(bitwidth=128)
 write_data = pyrtl.WireVector(bitwidth=128)
@@ -58,54 +62,55 @@ data_1_payload <<= data_1[index]
 data_2_payload <<= data_2[index]
 data_3_payload <<= data_3[index]
 
+hit_0 = pyrtl.WireVector(bitwidth=1, name='hit_0')
+hit_1 = pyrtl.WireVector(bitwidth=1, name='hit_1')
+hit_2 = pyrtl.WireVector(bitwidth=1, name='hit_2')
+hit_3 = pyrtl.WireVector(bitwidth=1, name='hit_3')
+
+replace_way = repl_way[index]
+
 ####################################################################################
 
 # TODO: Check four entries in a row in parallel.
-hit_way = -1
+
 with pyrtl.conditional_assignment:
     with (valid_0[index] == 1 & (tag == tag_0[index])):
-        hit_way = 0
+        hit_0 |= 1
     with (valid_1[index] == 1 & (tag == tag_1[index])):
-        hit_way = 1
+        hit_1 |= 1
     with (valid_2[index] == 1 & (tag == tag_2[index])):
-        hit_way = 2
+        hit_2 |= 1
     with (valid_3[index] == 1 & (tag == tag_3[index])):
-        hit_way = 3
+        hit_3 |= 1
 
 # TODO: Determine if hit or miss.
-if (hit_way != -1):
-    hit_result = 1
-else:
-    hit_result = 0
+hit_result = (hit_0 | hit_1 | hit_2 | hit_3)
 
 # TODO: If request type is write, write req_data to appropriate block address
+enable_0 = 0
+enable_1 = 0
+enable_2 = 0
+enable_3 = 0
 with pyrtl.conditional_assignment:
     with req_type == 1:
-        enable_0 = 0
-        enable_1 = 0
-        enable_2 = 0
-        enable_3 = 0
-        if hit_result == 0: # Handling write misses
-            replace_way = repl_way[index]
-            with pyrtl.conditional_assignment:
-                with replace_way == 0:
-                    enable_0 = 1
-                with replace_way == 1:
-                    enable_1 = 1
-                with replace_way == 2:
-                    enable_2 = 1
-                with replace_way == 3:
-                    enable_3 = 1
-        else: # Handling write hits
-            if hit_way == 0:
+        with hit_result == 0: # Handling write misses
+            with replace_way == 0:
+                enable_0 = 1
+            with replace_way == 1:
+                enable_1 = 1
+            with replace_way == 2:
+                enable_2 = 1
+            with replace_way == 3:
+                enable_3 = 1
+        with hit_result == 1: # Handling write hits
+            with hit_0:
                 enable_0 == 1
-            if hit_way == 1:
+            with hit_1:
                 enable_1 == 1
-            if hit_way == 2:
+            with hit_2:
                 enable_2 == 1
-            if hit_way == 3:
+            with hit_3:
                 enable_3 == 1
-            
             
         data_shift_amount = offset*32
 
@@ -120,26 +125,33 @@ with pyrtl.conditional_assignment:
 # TODO: Handle replacement. Be careful handling replacement when you
 # also have to do a write
 with pyrtl.conditional_assignment:
-    if hit_result == 0:
-        replace_way = repl_way[index]
-        with pyrtl.conditional_assignment:
-            with repl_way[index] == 3:
-                repl_way[index] == 0
-            with pyrtl.otherwise:
-                repl_way[index] |= repl_way[index] + 1
-        with req_type == 0:
-            if replace_way == 0:
-                data_0 |= 0
-                valid_0 |= 0
-            if replace_way == 1:
-                data_1 |= 0
-                valid_1 |= 0
-            if replace_way == 2:
-                data_2 |= 0
-                valid_2 |= 0
-            if replace_way == 3:
-                data_3 |= 0
-                valid_3 |= 0
+    with hit_result == 0:
+        # repl_way[index] |= pyrtl.select(replace_way == 3, 0, repl_way[index] + 1)
+        repl_way[index] |= (repl_way[index] + 1)[slice(1, 0, -1)]
+        
+        with replace_way == 0:
+            tag_0[index] |= tag
+            valid_0[index] |= pyrtl.Const(1)
+            # data_0[index] |= pyrtl.Const(0)
+                
+        # with replace_way == 3:
+        #     repl_way[index] |= 0
+        # with pyrtl.otherwise:
+        #     repl_way[index] |= repl_way[index]
+        
+        # with req_type == 0:
+        #     with tmp_replace_way == 0:
+        #         data_0[index] |= 0
+        #         # valid_0[index] |= 0
+        #     with tmp_replace_way == 1:
+        #         data_1[index] |= 0
+        #         # valid_1[index] |= 0
+        #     with tmp_replace_way == 2:
+        #         data_2[index] |= 0
+        #         # valid_2[index] |= 0
+        #     with tmp_replace_way == 3:
+        #         data_3[index] |= 0
+        #         # valid_3[index] |= 0
             
 
 # TODO: Determine output
@@ -149,24 +161,24 @@ with pyrtl.conditional_assignment:
         resp_data |= 0
     with req_new == 1:
         with req_type == 0: 
-            if hit_result == 1: # Handling read hits
+            with hit_result == 1: # Handling read hits
                 resp_hit |= 1
-                if hit_way == 0:
+                with hit_0:
                     resp_data |= data_0[index]
-                if hit_way == 1:
+                with hit_1:
                     resp_data |= data_1[index]
-                if hit_way == 2:
+                with hit_2:
                     resp_data |= data_2[index]
-                if hit_way == 3:
+                with hit_3:
                     resp_data |= data_3[index]
-            if hit_result == 0: # Handling read misses
+            with hit_result == 0: # Handling read misses
                 resp_hit |= 0
                 resp_data |= 0
         with req_type == 1:
-            if hit_result == 1: # Handling write hits
+            with hit_result == 1: # Handling write hits
                 resp_hit |= 1
                 resp_data |= 0
-            if hit_result == 0: # Handling write misses
+            with hit_result == 0: # Handling write misses
                 resp_hit |= 0
                 resp_data |= 0
             
