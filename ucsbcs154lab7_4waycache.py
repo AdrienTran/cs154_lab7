@@ -117,7 +117,7 @@ with pyrtl.conditional_assignment:
                     enable_3 = 1
 
         data_shift_amount = pyrtl.WireVector(bitwidth=7, name='data_shift_amount')            
-        data_shift_amount <<= offset*32
+        data_shift_amount <<= offset*8
 
         write_mask <<= pyrtl.select(hit_result, ~pyrtl.shift_left_logical(pyrtl.Const(0x0ffffffff, bitwidth=128), data_shift_amount), 0)
         write_data <<= pyrtl.shift_left_logical(req_data.zero_extended(bitwidth=128), data_shift_amount)
