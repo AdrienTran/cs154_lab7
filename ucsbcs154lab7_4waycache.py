@@ -133,6 +133,15 @@ with pyrtl.conditional_assignment:
             tag_0[index] |= tag
             valid_0[index] |= pyrtl.Const(1)
             # data_0[index] |= pyrtl.Const(0)
+        with replace_way == 1:
+            tag_1[index] |= tag
+            valid_1[index] |= pyrtl.Const(1)
+        with replace_way == 2:
+            tag_2[index] |= tag
+            valid_2[index] |= pyrtl.Const(1)
+        with replace_way == 3:
+            tag_3[index] |= tag
+            valid_3[index] |= pyrtl.Const(1)
                 
         # with replace_way == 3:
         #     repl_way[index] |= 0
